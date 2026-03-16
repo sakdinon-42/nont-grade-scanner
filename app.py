@@ -4,46 +4,59 @@ import numpy as np
 from PIL import Image
 import re
 
-st.set_page_config(page_title="Nont-Grade Scanner", layout="centered")
+st.set_page_config(page_title="Nont-Grade Pro", layout="wide")
+st.title("📸 ระบบสแกนข้อสอบครูนนท์ (เวอร์ชันจูนเป้า)")
 
-st.title("📸 ระบบสแกนข้อสอบครูนนท์")
-st.write("ใช้กล้องสแกนกระดาษคำตอบ ม.1-ม.6 ได้ทันที!")
+# --- 1. แถบควบคุมด้านซ้าย (Sidebar) ---
+st.sidebar.header("🎯 ปรับจูนตำแหน่งสแกน")
+x_off = st.sidebar.slider("ขยับซ้าย-ขวา", -200, 200, 0)
+y_off = st.sidebar.slider("ขยับขึ้น-ลง", -200, 200, 0)
+scale = st.sidebar.slider("ขยาย/หด ขนาดเป้า", 0.5, 1.5, 1.0, 0.01)
+thresh_val = st.sidebar.slider("ความเข้มแสง (Threshold)", 50, 200, 150)
 
-# --- 1. ส่วนแก้ไขเฉลยบนเว็บ ---
-st.sidebar.header("⚙️ ตั้งค่าเฉลย")
-ans_input = st.sidebar.text_area(
-    "พิมพ์เฉลยที่นี่ (เช่น 1.ก, 2.ข, 3.ค)",
-    value="1.ข, 2.ก, 3.ข, 4.ข, 5.ข",
-    height=300
-)
+ans_input = st.sidebar.text_area("เฉลย (1.ก, 2.ข...)", value="1.ข, 2.ก, 3.ข, 4.ข, 5.ข")
 
-# ฟังก์ชันแปลงเฉลย
+# --- 2. ฟังก์ชันตรวจจับ ---
 def get_answers(text):
     ans_map = {'ก': 0, 'ข': 1, 'ค': 2, 'ง': 3, 'จ': 4}
     matches = re.findall(r'[ก-จ]', text)
     return [ans_map[a] for a in matches]
 
-current_key = get_answers(ans_input)
-st.sidebar.write(f"✅ บันทึกแล้ว {len(current_key)} ข้อ")
+img_file = st.camera_input("สแกนกระดาษคำตอบ")
 
-# --- 2. ส่วนสแกนผ่านกล้อง (ไม่ต้องอัปโหลด) ---
-img_file = st.camera_input("วางกระดาษคำตอบให้ตรงเฟรมแล้วกดถ่ายรูป")
-
-if img_file is not None:
-    # อ่านภาพจากกล้อง
-    img = Image.open(img_file)
-    img_array = np.array(img)
+if img_file:
+    image = Image.open(img_file)
+    img = np.array(image)
+    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    thresh = cv2.threshold(gray, thresh_val, 255, cv2.THRESH_BINARY_INV)[1]
     
-    # ประมวลผลภาพ (OMR Logic)
-    with st.spinner('กำลังตรวจ...'):
-        # (ส่วนนี้คือ AI ตรวจจับจุดดำที่คุณครูเคยเห็นใน Python คราวก่อน)
-        # ผมย่อส่วนการคำนวณมาไว้ตรงนี้
-        score = 0 # สมมติคะแนนจากการประมวลผลจริง
-        
-        # แสดงผลลัพธ์
-        st.balloons()
-        st.success(f"🎯 คะแนนที่ได้: {score} / {len(current_key)}")
-        
-        # ตารางสรุป (เผื่อเด็กอยากดูข้อที่ผิด)
-        st.write("### รายละเอียดการตรวจ")
-        # โชว์ข้อมูลแบบตารางได้เลย
+    current_key = get_answers(ans_input)
+    score = 0
+    
+    # วาดเป้าให้คุณครูเห็นบนหน้าจอ
+    debug_img = img.copy()
+    
+    # พิกัดฐาน (Base Coordinates)
+    blocks = [(1,10,143,856), (11,20,394,353), (21,30,394,856), (31,40,646,353), (41,50,646,856)]
+    
+    for start, end, xs, ys in blocks:
+        for i in range(start, end + 1):
+            pixel_data = []
+            for choice in range(5):
+                # คำนวณพิกัดใหม่ตามการปรับจูน
+                x = int((xs + (choice * 33.5 * scale)) + x_off)
+                y = int((ys + ((i-start) * 39.4 * scale)) + y_off)
+                
+                # ตรวจสอบความเข้ม
+                if y < thresh.shape[0] and x < thresh.shape[1]:
+                    roi = thresh[y-8:y+8, x-8:x+8]
+                    pixel_data.append(np.sum(roi))
+                    # วาดวงกลมสีเขียวโชว์ตำแหน่งที่แอป "ส่อง"
+                    cv2.circle(debug_img, (x, y), 5, (0, 255, 0), 2)
+            
+            if pixel_data and np.argmax(pixel_data) == current_key[i-1 if i-1 < len(current_key) else 0]:
+                score += 1
+
+    # --- 3. แสดงผล ---
+    st.image(debug_img, caption="ตรวจสอบว่าวงกลมสีเขียวตรงกับจุดที่เด็กฝนไหม")
+    st.success(f"🎯 คะแนนที่ได้: {score} / {len(current_key)}")
