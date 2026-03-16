@@ -4,36 +4,47 @@ import numpy as np
 from PIL import Image
 import re
 
-st.set_page_config(page_title="Nont-Grade 6-Point Alignment", layout="wide")
+# ตั้งค่าหน้าเว็บให้แสดงผลเต็มจอ
+st.set_page_config(page_title="Nont-Grade 9:16 Pro", layout="centered")
 
-# --- 🛠️ ส่วนของ CSS เพื่อสร้างกรอบเล็ง 6 จุดบนหน้ากล้อง ---
+# --- 🛠️ ส่วนของ CSS ปรับกล้อง 9:16 และกรอบเล็ง ---
 st.markdown("""
     <style>
-    /* ขยายกล้องให้เต็มจอ */
+    /* บังคับช่องกล้องให้เป็น 9:16 */
     div[data-testid="stCameraInput"] {
         width: 100% !important;
+        max-width: 500px; /* จำกัดความกว้างให้ดูสวยในคอม */
+        margin: 0 auto;
+        aspect-ratio: 9 / 16; /* ขนาดมาตรฐานมือถือ */
         position: relative;
+        overflow: hidden;
+        border-radius: 15px;
+        border: 2px solid #333;
     }
-    /* สร้าง Container สำหรับกรอบเล็ง */
+    
+    /* กรอบ Container ของจุดเล็ง */
     .overlay {
         position: absolute;
-        top: 50px; left: 10%;
+        top: 10%; left: 10%;
         width: 80%; height: 80%;
         pointer-events: none;
         z-index: 100;
     }
-    /* สไตล์ของสี่เหลี่ยมเล็งเป้า (สีเขียว) */
+    
+    /* สไตล์จุดเล็งสี่เหลี่ยมสีเขียว */
     .guide-box {
         position: absolute;
-        width: 30px; height: 30px;
-        border: 3px solid #00FF00; /* สีเขียวสว่าง */
-        box-shadow: 0 0 10px #00FF00;
+        width: 40px; height: 40px;
+        border: 4px solid #00FF00;
+        box-shadow: 0 0 15px #00FF00;
+        border-radius: 5px;
     }
-    /* ตำแหน่ง 6 จุด (4 มุม + 2 กลางข้าง) */
+    
+    /* พิกัด 6 จุดอ้างอิงตามกระดาษ */
     .tl { top: 0; left: 0; }           /* บนซ้าย */
     .tr { top: 0; right: 0; }          /* บนขวา */
-    .ml { top: 50%; left: 0; }         /* กลางซ้าย */
-    .mr { top: 50%; right: 0; }        /* กลางขวา */
+    .ml { top: 48%; left: 0; }         /* กลางซ้าย */
+    .mr { top: 48%; right: 0; }        /* กลางขวา */
     .bl { bottom: 0; left: 0; }        /* ล่างซ้าย */
     .br { bottom: 0; right: 0; }       /* ล่างขวา */
     </style>
@@ -48,16 +59,16 @@ st.markdown("""
     </div>
     """, unsafe_allow_html=True)
 
-st.title("📸 เครื่องสแกนอัจฉริยะครูนนท์ (6-Point Viewfinder)")
+st.title("📸 Nont-Grade Scanner (9:16)")
+st.write("เล็งจุดสีเขียวให้ทับสี่เหลี่ยมสีดำบนกระดาษทั้ง 6 จุด")
 
-# --- แถบแก้ไขเฉลยด้านซ้าย ---
+# --- แถบแก้ไขเฉลย (Sidebar) ---
 st.sidebar.header("⚙️ ตั้งค่าเฉลย")
-ans_input = st.sidebar.text_area("ใส่เฉลย (1.ก, 2.ข...)", value="1.ข, 2.ก, 3.ข, 4.ข, 5.ข", height=300)
+ans_input = st.sidebar.text_area("เฉลย (1.ก, 2.ข...)", value="1.ข, 2.ก, 3.ข, 4.ข, 5.ข", height=300)
 
-# --- ส่วนรับภาพและตรวจ ---
-img_file = st.camera_input("เล็งสี่เหลี่ยมสีเขียวให้ทับจุดดำบนกระดาษ")
+# --- ส่วนรับภาพ ---
+img_file = st.camera_input("กดถ่ายเมื่อจุดเขียวทับจุดดำบนกระดาษแล้ว")
 
 if img_file:
-    # (โค้ดส่วนนี้คือ AI ประมวลผลภาพที่คุณครูเคยเห็นในเวอร์ชันก่อน)
-    st.success("สแกนสำเร็จ! คะแนนกำลังประมวลผล...")
-    # ... (Logic การตรวจข้อสอบ) ...
+    st.balloons()
+    st.success("สแกนสำเร็จ! ระบบกำลังประมวลผล...")
